@@ -167,11 +167,16 @@
     </div>
 
     <script>
-        // --- NẠP HÌNH ẢNH ICON NHÂN VẬT ---
+        // --- NẠP HÌNH ẢNH NHÂN VẬT & QUÁI ---
         const playerImg = new Image();
-        playerImg.src = 'icon.png';
+        playerImg.src = 'IMG_0498.jpeg';
         let isPlayerImgLoaded = false;
         playerImg.onload = () => { isPlayerImgLoaded = true; };
+
+        const monsterImg = new Image();
+        monsterImg.src = 'IMG_0499.jpeg';
+        let isMonsterImgLoaded = false;
+        monsterImg.onload = () => { isMonsterImgLoaded = true; };
 
         // --- 1. AUTH & STORAGE ---
         let isLoginMode = true;
@@ -255,7 +260,7 @@
         const GROUND_HEIGHT = 80;
 
         const player = {
-            x: 100, y: 0, size: 36, // Kích thước hiển thị ảnh
+            x: 100, y: 0, size: 40,
             vx: 0, vy: 0, speed: 7,
             jumpPower: -11, isGrounded: false,
             level: 1, exp: 0, expReq: 100,
@@ -328,7 +333,7 @@
                     id: Math.random(),
                     x: Math.random() * (canvas.width - 200) + 100,
                     y: canvas.height - GROUND_HEIGHT - 35,
-                    size: 35,
+                    size: 40,
                     vx: 0,
                     color: player.sea === 1 ? '#e74c3c' : (player.sea === 2 ? '#8e44ad' : '#d35400'),
                     level: mLevel,
@@ -346,7 +351,7 @@
                 name: name,
                 x: canvas.width / 2,
                 y: canvas.height - GROUND_HEIGHT - 60,
-                size: 60,
+                size: 70,
                 vx: 0,
                 color: '#c0392b',
                 level: level,
@@ -532,12 +537,19 @@
                 ctx.fill();
             }
 
-            // Quái Vật
+            // Quái Vật (Hình IMG_0499.jpeg & Thoại "tha cho tôi đi tôi là tuất")
             monsters.forEach(m => {
                 if (m.hp <= 0) return;
-                ctx.fillStyle = m.color;
-                ctx.fillRect(m.x - m.size/2, m.y - m.size/2, m.size, m.size);
 
+                // 1. Vẽ Ảnh Quái
+                if (isMonsterImgLoaded) {
+                    ctx.drawImage(monsterImg, m.x - m.size/2, m.y - m.size/2, m.size, m.size);
+                } else {
+                    ctx.fillStyle = m.color;
+                    ctx.fillRect(m.x - m.size/2, m.y - m.size/2, m.size, m.size);
+                }
+
+                // 2. Thanh Máu Quái
                 ctx.fillStyle = '#000';
                 ctx.fillRect(m.x - 25, m.y - m.size/2 - 15, 50, 6);
                 ctx.fillStyle = '#ff4757';
@@ -546,13 +558,30 @@
                 ctx.fillStyle = '#000';
                 ctx.font = 'bold 11px Arial';
                 ctx.fillText(m.isBoss ? `${m.name}` : `Lv.${m.level}`, m.x - 20, m.y - m.size/2 - 20);
+
+                // 3. Khung Thoại "tha cho tôi đi tôi là tuất"
+                const speechText = "tha cho tôi đi tôi là tuất";
+                ctx.font = 'bold 12px Arial';
+                const textWidth = ctx.measureText(speechText).width;
+                const bubbleX = m.x - textWidth / 2 - 6;
+                const bubbleY = m.y - m.size/2 - 45;
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.beginPath();
+                ctx.roundRect(bubbleX, bubbleY, textWidth + 12, 20, 5);
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                ctx.fillStyle = '#d63031';
+                ctx.fillText(speechText, bubbleX + 6, bubbleY + 14);
             });
 
-            // VẼ NHÂN VẬT (Thay khối vuông bằng hình icon.png)
+            // VẼ NHÂN VẬT (Hình IMG_0498.jpeg)
             if (isPlayerImgLoaded) {
                 ctx.drawImage(playerImg, player.x - player.size/2, player.y - player.size/2, player.size, player.size);
             } else {
-                // Nếu ảnh chưa tải xong hoặc không tìm thấy ảnh thì dự phòng vẽ khối vuông
                 ctx.fillStyle = '#00d2ff';
                 ctx.fillRect(player.x - player.size/2, player.y - player.size/2, player.size, player.size);
             }
