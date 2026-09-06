@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Blox Fruit 2D - Multi Game Edition</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', Roboto, sans-serif; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #0f0f15; color: #fff; }
+        
+        /* 1. Màn hình Auth */
+        #auth-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #1e5799, #2989d8, #7db9e8);
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100;
+        }
+        .auth-box { 
+            background: rgba(15, 15, 25, 0.85); backdrop-filter: blur(10px);
+            padding: 30px; border-radius: 16px; width: 320px; text-align: center; 
+            border: 2px solid rgba(255, 255, 255, 0.3); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .auth-box h2 { margin-bottom: 20px; color: #00d2ff; letter-spacing: 2px; }
+        .auth-box input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #333; background: #222; color: #fff; outline: none; }
+        .auth-box button { width: 100%; padding: 12px; margin-top: 15px; border-radius: 8px; border: none; background: linear-gradient(45deg, #00d2ff, #0072ff); color: #fff; font-weight: bold; cursor: pointer; }
+
+        /* 2. Màn hình chọn Game */
+        #lobby-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #87CEEB, #E0F6FF);
+            display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 90;
+            padding: 20px; overflow-y: auto;
+        }
+        #lobby-screen h1 { font-size: 40px; color: #1e3c72; text-shadow: 2px 2px 0 #fff; margin-bottom: 5px; font-weight: 900; }
+        #lobby-screen p { font-size: 16px; color: #333; margin-bottom: 25px; font-weight: bold; }
+        
+        .game-grid { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; max-width: 900px; }
+        .game-card {
+            background: rgba(255, 255, 255, 0.9); border-radius: 16px; width: 250px; padding: 20px;
+            display: flex; flex-direction: column; align-items: center; box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            border: 3px solid #fff; transition: transform 0.2s;
+        }
+        .game-card:hover { transform: translateY(-5px); }
+        .game-card h3 { color: #2c3e50; margin-bottom: 10px; font-size: 20px; text-align: center; }
+        .play-btn {
+            width: 100%; padding: 12px; font-size: 16px; font-weight: bold; color: #fff;
+            background: linear-gradient(180deg, #28a745, #1e7e34); border: none;
+            border-radius: 25px; cursor: pointer; box-shadow: 0 4px 10px rgba(40,167,69,0.4);
+        }
+
+        /* Modal Toast */
+        #toast {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85); color: #ffcc00; padding: 12px 25px;
+            border-radius: 25px; font-weight: bold; font-size: 16px; border: 2px solid #ffcc00;
+            display: none; z-index: 200; box-shadow: 0 0 15px rgba(255,204,0,0.5);
+        }
+
+        /* 3. Màn hình Game Canvas */
+        #game-container { position: relative; width: 100%; height: 100%; display: none; }
+        canvas { display: block; }
+
+        /* UI HUD */
+        #hud { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.6); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.3); pointer-events: none; min-width: 200px; }
+        #hud div { margin-bottom: 5px; font-weight: bold; font-size: 14px; text-shadow: 1px 1px 2px #000; }
+
+        /* Menu Hack */
+        #hack-btn { 
+            position: absolute; top: 15px; right: 15px; padding: 10px 20px; 
+            background: linear-gradient(45deg, #ff0055, #ff5500); color: #fff; 
+            font-weight: bold; border: none; border-radius: 20px; cursor: pointer; z-index: 10;
+            box-shadow: 0 0 10px rgba(255,0,85,0.5);
+        }
+        #hack-menu { 
+            position: absolute; top: 65px; right: 15px; 
+            background: rgba(20, 20, 30, 0.95); border: 2px solid #ff0055; 
+            padding: 20px; border-radius: 12px; display: none; z-index: 10; width: 240px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+        }
+        #hack-menu h3 { color: #ff0055; margin-bottom: 15px; text-align: center; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .hack-option { margin: 12px 0; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+
+        /* Nút quay lại Menu */
+        #back-btn {
+            position: absolute; top: 15px; left: 230px; padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.8); color: #000; font-weight: bold;
+            border: none; border-radius: 12px; cursor: pointer; z-index: 10;
+        }
+
+        /* Nút Tấn công Touch */
+        #attack-btn { 
+            position: absolute; bottom: 40px; right: 40px; width: 80px; height: 80px; 
+            background: radial-gradient(circle, #ff0055, #990033); border: 3px solid #fff; 
+            border-radius: 50%; color: white; font-weight: bold; font-size: 18px; 
+            display: flex; justify-content: center; align-items: center; z-index: 5;
+            box-shadow: 0 0 15px rgba(255,0,85,0.6);
+        }
+        #attack-btn:active { transform: scale(0.9); }
+    </style>
+</head>
+<body>
+
+    <!-- 1. Màn hình Đăng nhập / Đăng ký -->
+    <div id="auth-screen">
+        <div class="auth-box">
+            <h2 id="auth-title">ĐĂNG NHẬP</h2>
+            <input type="text" id="username" placeholder="Tên tài khoản">
+            <input type="password" id="password" placeholder="Mật khẩu">
+            <button id="auth-btn" onclick="handleAuth()">Đăng Nhập</button>
+            <p style="margin-top: 15px; font-size: 12px; cursor: pointer; text-decoration: underline;" onclick="toggleAuthMode()" id="switch-mode">Chưa có tài khoản? Đăng ký ngay</p>
+        </div>
+    </div>
+
+    <!-- 2. Màn hình chọn Game -->
+    <div id="lobby-screen">
+        <h1>ROBLOX MINI HUB</h1>
+        <p id="welcome-txt">Xin chào, Player!</p>
+        
+        <div class="game-grid">
+            <div class="game-card">
+                <h3>Blox Fruit 2D</h3>
+                <div style="font-size: 50px; margin-bottom: 10px;">⚔️</div>
+                <button class="play-btn" onclick="enterGame()">CHƠI NGAY</button>
+            </div>
+            <div class="game-card">
+                <h3>Steal an Egg</h3>
+                <div style="font-size: 50px; margin-bottom: 10px;">🥚</div>
+                <button class="play-btn" style="background: #6c757d;" onclick="showComingSoon('Steal an Egg')">CHƠI</button>
+            </div>
+            <div class="game-card">
+                <h3>Grow a Garden</h3>
+                <div style="font-size: 50px; margin-bottom: 10px;">🌻</div>
+                <button class="play-btn" style="background: #6c757d;" onclick="showComingSoon('Grow a Garden')">CHƠI</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast">Coming soon!</div>
+
+    <!-- 3. Màn hình Canvas Game Blox Fruit -->
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="hud">
+            <div id="ui-user" style="color: #00d2ff;">Player: -</div>
+            <div id="ui-level" style="color: #ffcc00;">Level: 1</div>
+            <div id="ui-exp" style="color: #00ff66;">EXP: 0 / 100</div>
+            <div id="ui-sea" style="color: #ff00ff;">Sea: 1</div>
+            <div id="ui-stats" style="color: #ffffff;">ATK: 10 | HP: 100/100</div>
+        </div>
+
+        <button id="back-btn" onclick="exitToLobby()">MENU</button>
+        <button id="hack-btn" onclick="toggleHackMenu()">⚡ HACK MENU</button>
+        
+        <div id="hack-menu">
+            <h3>MOD MENU</h3>
+            <div class="hack-option">
+                <span>x100 Sát thương:</span>
+                <input type="checkbox" id="hack-dmg" onchange="toggleHackDmg(this.checked)">
+            </div>
+            <div class="hack-option">
+                <span>Auto Farm (Bay mượt):</span>
+                <input type="checkbox" id="hack-autofarm" onchange="toggleAutoFarm(this.checked)">
+            </div>
+        </div>
+
+        <div id="attack-btn" onclick="playerAttack()">ĐÁNH</div>
+    </div>
+
+    <script>
+        // --- NẠP HÌNH ẢNH ICON NHÂN VẬT ---
+        const playerImg = new Image();
+        playerImg.src = 'icon.png';
+        let isPlayerImgLoaded = false;
+        playerImg.onload = () => { isPlayerImgLoaded = true; };
+
+        // --- 1. AUTH & STORAGE ---
+        let isLoginMode = true;
+        let currentUser = null;
+        let loadedSaveData = null;
+
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            document.getElementById('auth-title').innerText = isLoginMode ? "ĐĂNG NHẬP" : "ĐĂNG KÝ";
+            document.getElementById('auth-btn').innerText = isLoginMode ? "Đăng Nhập" : "Đăng Ký";
+            document.getElementById('switch-mode').innerText = isLoginMode ? "Chưa có tài khoản? Đăng ký ngay" : "Đã có tài khoản? Đăng nhập";
+        }
+
+        function handleAuth() {
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value.trim();
+            if (!user || !pass) return alert("Vui lòng nhập tài khoản và mật khẩu!");
+
+            let accounts = JSON.parse(localStorage.getItem('blox_hub_accounts') || '{}');
+
+            if (isLoginMode) {
+                if (accounts[user] && accounts[user].password === pass) {
+                    currentUser = user;
+                    loadedSaveData = accounts[user].data;
+                    showLobbyScreen();
+                } else {
+                    alert("Tài khoản hoặc mật khẩu không đúng!");
+                }
+            } else {
+                if (accounts[user]) {
+                    alert("Tài khoản đã tồn tại!");
+                } else {
+                    const newData = { level: 1, exp: 0, sea: 1 };
+                    accounts[user] = { password: pass, data: newData };
+                    localStorage.setItem('blox_hub_accounts', JSON.stringify(accounts));
+                    alert("Đăng ký thành công! Hãy đăng nhập.");
+                    toggleAuthMode();
+                }
+            }
+        }
+
+        function showLobbyScreen() {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('game-container').style.display = 'none';
+            document.getElementById('lobby-screen').style.display = 'flex';
+            document.getElementById('welcome-txt').innerText = `Thuyền trưởng: ${currentUser}`;
+        }
+
+        function showComingSoon(gameName) {
+            const toast = document.getElementById('toast');
+            toast.innerText = `${gameName}: Coming soon!`;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 2000);
+        }
+
+        function saveData() {
+            if (!currentUser) return;
+            let accounts = JSON.parse(localStorage.getItem('blox_hub_accounts') || '{}');
+            if (accounts[currentUser]) {
+                accounts[currentUser].data = {
+                    level: player.level,
+                    exp: player.exp,
+                    sea: player.sea
+                };
+                localStorage.setItem('blox_hub_accounts', JSON.stringify(accounts));
+            }
+        }
+
+        // --- 2. GAME LOGICAL ENGINE ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const GRAVITY = 0.5;
+        const GROUND_HEIGHT = 80;
+
+        const player = {
+            x: 100, y: 0, size: 36, // Kích thước hiển thị ảnh
+            vx: 0, vy: 0, speed: 7,
+            jumpPower: -11, isGrounded: false,
+            level: 1, exp: 0, expReq: 100,
+            baseAtk: 10, atk: 10, hp: 100, maxHp: 100,
+            sea: 1, isAttacking: false, attackTimer: 0
+        };
+
+        let hackDmgActive = false;
+        let autoFarmActive = false;
+        let monsters = [];
+        let boss = null;
+        let isGameRunning = false;
+
+        const joystick = { active: false, startX: 0, startY: 0, currX: 0, currY: 0, dx: 0, dy: 0, maxRadius: 40 };
+
+        function enterGame() {
+            document.getElementById('lobby-screen').style.display = 'none';
+            document.getElementById('game-container').style.display = 'block';
+
+            player.level = loadedSaveData.level || 1;
+            player.exp = loadedSaveData.exp || 0;
+            player.sea = loadedSaveData.sea || 1;
+
+            updatePlayerStats();
+            player.y = canvas.height - GROUND_HEIGHT - player.size;
+
+            spawnMonsters();
+            setupControls();
+            
+            if (!isGameRunning) {
+                isGameRunning = true;
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function exitToLobby() {
+            showLobbyScreen();
+        }
+
+        function updatePlayerStats() {
+            player.expReq = player.level * 100;
+            player.maxHp = 100 + player.level * 15;
+            player.baseAtk = 10 + player.level * 4;
+            player.atk = hackDmgActive ? player.baseAtk * 100 : player.baseAtk;
+
+            document.getElementById('ui-user').innerText = `Player: ${currentUser}`;
+            document.getElementById('ui-level').innerText = `Level: ${player.level}`;
+            document.getElementById('ui-exp').innerText = `EXP: ${player.exp} / ${player.expReq}`;
+            document.getElementById('ui-sea').innerText = `Sea: ${player.sea}`;
+            document.getElementById('ui-stats').innerText = `ATK: ${player.atk} | HP: ${Math.floor(player.hp)}/${player.maxHp}`;
+        }
+
+        // --- 3. MONSTER & BOSS ---
+        function spawnMonsters() {
+            monsters = [];
+            
+            if (player.level >= 700 && player.sea === 1 && !boss) {
+                spawnBoss("ADMIRAL SEA 1", 700, 10000, 50);
+                return;
+            }
+            if (player.level >= 1500 && player.sea === 2 && !boss) {
+                spawnBoss("RIP INDRA SEA 2", 1500, 50000, 150);
+                return;
+            }
+
+            for (let i = 0; i < 4; i++) {
+                let mult = player.sea === 1 ? 1 : (player.sea === 2 ? 3 : 8);
+                let mLevel = Math.max(1, player.level + Math.floor(Math.random() * 3));
+                monsters.push({
+                    id: Math.random(),
+                    x: Math.random() * (canvas.width - 200) + 100,
+                    y: canvas.height - GROUND_HEIGHT - 35,
+                    size: 35,
+                    vx: 0,
+                    color: player.sea === 1 ? '#e74c3c' : (player.sea === 2 ? '#8e44ad' : '#d35400'),
+                    level: mLevel,
+                    hp: mLevel * 40 * mult,
+                    maxHp: mLevel * 40 * mult,
+                    atk: mLevel * 2 * mult,
+                    speed: 1.5 + Math.random() * 0.5,
+                    isBoss: false
+                });
+            }
+        }
+
+        function spawnBoss(name, level, hp, atk) {
+            boss = {
+                name: name,
+                x: canvas.width / 2,
+                y: canvas.height - GROUND_HEIGHT - 60,
+                size: 60,
+                vx: 0,
+                color: '#c0392b',
+                level: level,
+                hp: hp,
+                maxHp: hp,
+                atk: atk,
+                speed: 1.2,
+                isBoss: true
+            };
+            monsters = [boss];
+        }
+
+        // --- 4. CONTROLS ---
+        const keys = {};
+        function setupControls() {
+            window.onkeydown = e => {
+                keys[e.key.toLowerCase()] = true;
+                if ((e.key === ' ' || e.key === 'w' || e.key === 'ArrowUp') && player.isGrounded && !autoFarmActive) {
+                    player.vy = player.jumpPower;
+                    player.isGrounded = false;
+                }
+                if (e.key.toLowerCase() === 'j') playerAttack();
+            };
+            window.onkeyup = e => keys[e.key.toLowerCase()] = false;
+
+            const handleStart = (x, y) => {
+                if (x < canvas.width / 2) {
+                    joystick.active = true;
+                    joystick.startX = x; joystick.startY = y;
+                    joystick.currX = x; joystick.currY = y;
+                }
+            };
+            const handleMove = (x, y) => {
+                if (!joystick.active) return;
+                let diffX = x - joystick.startX;
+                let diffY = y - joystick.startY;
+                let dist = Math.hypot(diffX, diffY);
+                if (dist > joystick.maxRadius) {
+                    diffX = (diffX / dist) * joystick.maxRadius;
+                    diffY = (diffY / dist) * joystick.maxRadius;
+                }
+                joystick.currX = joystick.startX + diffX;
+                joystick.currY = joystick.startY + diffY;
+                joystick.dx = diffX / joystick.maxRadius;
+                joystick.dy = diffY / joystick.maxRadius;
+            };
+            const handleEnd = () => { joystick.active = false; joystick.dx = 0; joystick.dy = 0; };
+
+            canvas.ontouchstart = e => handleStart(e.touches[0].clientX, e.touches[0].clientY);
+            canvas.ontouchmove = e => handleMove(e.touches[0].clientX, e.touches[0].clientY);
+            canvas.ontouchend = handleEnd;
+            canvas.onmousedown = e => handleStart(e.clientX, e.clientY);
+            window.onmousemove = e => handleMove(e.clientX, e.clientY);
+            window.onmouseup = handleEnd;
+        }
+
+        function toggleHackMenu() {
+            const menu = document.getElementById('hack-menu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+        function toggleHackDmg(enabled) { hackDmgActive = enabled; updatePlayerStats(); }
+        function toggleAutoFarm(enabled) { autoFarmActive = enabled; }
+
+        function playerAttack() {
+            player.isAttacking = true;
+            player.attackTimer = 8;
+
+            monsters.forEach(m => {
+                let dist = Math.hypot(player.x - m.x, player.y - m.y);
+                if (dist < 90) {
+                    m.hp -= player.atk;
+                    if (m.hp <= 0) {
+                        player.exp += m.level * 40;
+                        if (m.isBoss) {
+                            if (player.sea === 1) { player.sea = 2; alert("🎉 Đánh bại Boss! Sang SEA 2!"); }
+                            else if (player.sea === 2) { player.sea = 3; alert("🎉 Đánh bại Boss! Sang SEA 3!"); }
+                            boss = null;
+                        }
+                        
+                        while (player.exp >= player.expReq) {
+                            player.level++;
+                            player.exp -= player.expReq;
+                        }
+                        saveData();
+                        updatePlayerStats();
+                        setTimeout(spawnMonsters, 1000);
+                    }
+                }
+            });
+        }
+
+        // --- 5. SMOOTH FLYING & PHYSICS LOOP ---
+        function update() {
+            if (document.getElementById('game-container').style.display === 'none') return;
+
+            const groundY = canvas.height - GROUND_HEIGHT - player.size;
+
+            if (autoFarmActive && monsters.length > 0) {
+                let target = monsters[0];
+                let targetX = target.x;
+                let targetY = target.y - player.size - 10;
+
+                player.x += (targetX - player.x) * 0.15;
+                player.y += (targetY - player.y) * 0.15;
+                player.vy = 0;
+
+                if (Math.hypot(player.x - targetX, player.y - targetY) < 30) {
+                    playerAttack();
+                }
+            } else {
+                let moveX = joystick.dx;
+                if (keys['a'] || keys['arrowleft']) moveX = -1;
+                if (keys['d'] || keys['arrowright']) moveX = 1;
+
+                player.vx = moveX * player.speed;
+                player.x += player.vx;
+
+                player.vy += GRAVITY;
+                player.y += player.vy;
+
+                if (player.y >= groundY) {
+                    player.y = groundY;
+                    player.vy = 0;
+                    player.isGrounded = true;
+                }
+
+                player.x = Math.max(15, Math.min(canvas.width - 15, player.x));
+            }
+
+            monsters.forEach(m => {
+                if (m.hp > 0 && !autoFarmActive) {
+                    let dist = player.x - m.x;
+                    if (Math.abs(dist) < 350 && Math.abs(dist) > 10) {
+                        m.vx = Math.sign(dist) * m.speed;
+                        m.x += m.vx;
+                    }
+
+                    if (Math.hypot(player.x - m.x, player.y - m.y) < 30) {
+                        player.hp -= m.atk * 0.05;
+                        if (player.hp <= 0) {
+                            alert("Bạn đã tử trận! Hồi sinh tại chỗ.");
+                            player.hp = player.maxHp;
+                            player.x = 100;
+                        }
+                        updatePlayerStats();
+                    }
+                }
+            });
+
+            if (player.attackTimer > 0) player.attackTimer--;
+            else player.isAttacking = false;
+        }
+
+        function draw() {
+            if (document.getElementById('game-container').style.display === 'none') return;
+
+            // Bầu trời Sáng
+            ctx.fillStyle = player.sea === 1 ? '#87CEEB' : (player.sea === 2 ? '#B0E0E6' : '#FFFACD');
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Mặt Trời
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(canvas.width - 80, 80, 40, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Sàn Đất & Cỏ
+            const groundY = canvas.height - GROUND_HEIGHT;
+            ctx.fillStyle = '#795548';
+            ctx.fillRect(0, groundY, canvas.width, GROUND_HEIGHT);
+            ctx.fillStyle = '#4CAF50';
+            ctx.fillRect(0, groundY, canvas.width, 15);
+
+            // Joystick
+            if (joystick.active) {
+                ctx.beginPath();
+                ctx.arc(joystick.startX, joystick.startY, joystick.maxRadius, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(joystick.currX, joystick.currY, 20, 0, Math.PI * 2);
+                ctx.fillStyle = '#00d2ff';
+                ctx.fill();
+            }
+
+            // Quái Vật
+            monsters.forEach(m => {
+                if (m.hp <= 0) return;
+                ctx.fillStyle = m.color;
+                ctx.fillRect(m.x - m.size/2, m.y - m.size/2, m.size, m.size);
+
+                ctx.fillStyle = '#000';
+                ctx.fillRect(m.x - 25, m.y - m.size/2 - 15, 50, 6);
+                ctx.fillStyle = '#ff4757';
+                ctx.fillRect(m.x - 25, m.y - m.size/2 - 15, (m.hp / m.maxHp) * 50, 6);
+
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 11px Arial';
+                ctx.fillText(m.isBoss ? `${m.name}` : `Lv.${m.level}`, m.x - 20, m.y - m.size/2 - 20);
+            });
+
+            // VẼ NHÂN VẬT (Thay khối vuông bằng hình icon.png)
+            if (isPlayerImgLoaded) {
+                ctx.drawImage(playerImg, player.x - player.size/2, player.y - player.size/2, player.size, player.size);
+            } else {
+                // Nếu ảnh chưa tải xong hoặc không tìm thấy ảnh thì dự phòng vẽ khối vuông
+                ctx.fillStyle = '#00d2ff';
+                ctx.fillRect(player.x - player.size/2, player.y - player.size/2, player.size, player.size);
+            }
+
+            // Hiệu ứng Đánh
+            if (player.isAttacking) {
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, 55, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255, 0, 85, 0.7)';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+    </script>
+</body>
+</html>
